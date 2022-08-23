@@ -56,7 +56,8 @@ INSTALLED_APPS = [
     'products',
     'variants',
     'rest_framework_simplejwt.token_blacklist',
-    'stripe'
+    'stripe',
+    'corsheaders',
 ]
 
 REST_FRAMEWORK = {
@@ -75,12 +76,17 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
 ROOT_URLCONF = 'hoang_ha_mobile.urls'
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',
+]
 
 TEMPLATES = [
     {
