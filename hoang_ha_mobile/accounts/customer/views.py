@@ -1,8 +1,12 @@
 from rest_framework import generics, permissions, response, status
+from rest_framework.views import APIView
+
 from rest_framework_simplejwt.views import TokenBlacklistView, TokenRefreshView
 from rest_framework_simplejwt import tokens, authentication
+
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
+
 from .. import models
 from . import serializers
 User = get_user_model()
@@ -96,3 +100,8 @@ class UploadImageAPIView(generics.UpdateAPIView):
     
     def perform_update(self, serializer):
         serializer.save(updated_by=self.request.user.id)
+        
+           
+
+    
+    

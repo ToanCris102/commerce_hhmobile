@@ -8,4 +8,5 @@ urlpatterns = [
     path('profile/addresses/<int:address_id>/', views.AddressRetrieveDestroyUpdateAPIView.as_view(), name='update_retrieve_destroy_address'),
     path('profile/', views.ProfileUpdateRetrieveAPIView.as_view(), name='detail-profile'),
     path('profile/image/', views.UploadImageAPIView.as_view(), name='upload_image'),
+    
 ]
