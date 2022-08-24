@@ -20,6 +20,7 @@ class Order(models.Model):
     delivery_address = models.CharField(max_length=255)
     note = models.TextField()
     status = models.CharField(default="processing",choices= STATUS_CHOICES,max_length=255)
+    charge_status = models.BooleanField(default=False, blank=True)
     total = models.BigIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, related_name ="order_created" ,blank=True,null=True)

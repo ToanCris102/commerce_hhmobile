@@ -1,65 +1,59 @@
-import stripe
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
-stripe.api_key = "sk_test_51LXGf3KVqGJyPIN8OybPCYaySbi95IMjawwMTafeBfinqUcgQGMkHBVCpMtx7NxMxkl83hYXB4T8jBXRV6DR6Urb00FYtmn24h"
+import stripe
+stripe.api_key = os.getenv('STRIPE_API_KEY')
+
+from orders.untils import update_status_charge
 
 
 def get_or_create_customer(email):
     customer = stripe.Customer.search(
         query ="email:'%s'" % (email)
-    )     
+    ) 
     if(len(customer.data) < 1):
         customer = stripe.Customer.create(
             email = email
         )
         
-        return customer
-    
-    else:
-        
+        return customer        
+    else:        
         return customer.data[0]
 
 
-def create_payment_intent(email, amount, order_id):
+def create_payment_intent(email, amount, order_id, payment_method_id):
     customer = get_or_create_customer(email)
-    print(customer.id)
     payment_intent = stripe.PaymentIntent.create(
         amount = amount, 
         currency = 'usd', 
         customer = customer['id'],
-        # payment_method_type = [payment_method_id],
-        # setup_future_usage = 'off_session',
-        # automatic_payment_methods = {
-        #     'enabled': True,
-        # },
         payment_method_types=['card'],
         metadata = {
             'order_id': order_id,
-        },        
-    )
+        },   
+    )    
+    if (payment_method_id is not None):
+        payment = stripe.PaymentIntent.confirm(        
+            payment_intent.id,
+            payment_method=payment_method_id,
+        )
     
     return payment_intent.id
 
 
 def setup_payment_intent(email):
     customer = get_or_create_customer(email)
-    # intent = stripe.SetupIntent.list(customer=customer.id)
-    # if(len(intent) < 1):
     print(customer.id)
     intent = stripe.SetupIntent.create(
         customer = customer.id,
         payment_method_types = ["card"],
     )
-            
+         
     return intent.client_secret
-    # else:
-        
-    #     return intent.data[0].client_secret
     
     
 def list_payment_method(email):
-    # customer = stripe.Customer.search(
-    #     query ="email:'%s'" % (email)
-    # ) 
     customer = get_or_create_customer(email)
     list = stripe.PaymentMethod.list(
         customer= customer.id,
@@ -70,28 +64,104 @@ def list_payment_method(email):
 
 
 def detach_payment_method(payment_method_id):
-    stripe.PaymentMethod.detach(
-        payment_method_id,
-    )    
+    try:
+        payment_detach = stripe.PaymentMethod.detach(
+            payment_method_id,
+        )
+        
+        return {
+            "data": payment_detach,
+            "status": True
+        }
+    except Exception as e:
+        return {
+            "data": str(e),
+            "status": False
+        }
 
 
-def checkout(payment_method_id, order_id):
+def checkout(payment_method_id, order_id):    
     payment_intent = stripe.PaymentIntent.search(
         query = "status:'requires_payment_method' AND metadata['order_id']:'%s'" % (order_id),
-    )
-    print(payment_intent.data[0].id)
-    payment = stripe.PaymentIntent.confirm(        
-        payment_intent.data[0].id,
-        payment_method=payment_method_id,
-    )
-
-    return payment
-
+    )       
+    if(len(payment_intent.data) < 1): 
+        return {
+            "data": "Don't ready for charge, Try to after 10 second",
+            "status": False
+        }       
+        
+    try:
+        payment = stripe.PaymentIntent.confirm(        
+            payment_intent.data[0].id,
+            payment_method=payment_method_id,
+        )
+        
+        return {
+            "data": payment,
+            "status": True
+        } 
+    except Exception as e:
+        return {
+            "data": str(e),
+            "status": False
+        } 
+            
 
 def refund_payment(order_id):
-    data = stripe.Charge.search(
-        query = "metadata['order_id']:" + order_id
+    charge = stripe.Charge.search(
+        query = "metadata['order_id']:'%d'" % (order_id)
+    )    
+    if(len(charge.data) < 1):        
+        return {
+            "data": "Wrong data",
+            "status": False
+        }
+    
+    data_rf = stripe.Refund.create(
+        charge = charge.data[0].id,
     )
     
-    return data
+    return {
+            "data": data_rf,
+            "status": True
+        }
     
+    
+def webhook_stripe(payload, sig_header, event):
+    endpoint_secret = os.getenv('ENDPOINT_SECRET')
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, endpoint_secret
+        )
+    except ValueError as e:
+        # Invalid payload
+        raise e
+    
+    except stripe.error.SignatureVerificationError as e:
+        # Invalid signature
+        raise e
+
+    if event.type == 'setup_intent.succeeded':
+        print('PaymentIntent setup successful!')
+          
+    if event.type == 'payment_intent.succeeded':
+        payment_intent = event.data.object # contains a stripe.PaymentIntent
+        print('PaymentIntent was successful!')
+        
+    elif event.type == 'payment_method.attached':
+        payment_method = event.data.object # contains a stripe.PaymentMethod
+        print('PaymentMethod was attached to a Customer!')
+    # ... handle other event types
+    
+    else:
+        print('Unhandled event type {}'.format(event.type))
+    # Handle the event
+    
+    if event.type == 'charge.succeeded':
+        charge = event.data.object
+        
+        print(charge)
+        update_status_charge(charge.metadata.order_id)
+        print('Charging was successful!')
+    
+    print('Handled event type {}'.format(event['type']))

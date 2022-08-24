@@ -6,7 +6,8 @@ from . import serializers
 from .. import models
 
 from hoang_ha_mobile.base.errors import check_valid_item
-from hoang_ha_mobile.base.services.payments.stripe.views import create_payment_intent, checkout
+from hoang_ha_mobile.base.services.payments.stripe.views \
+import create_payment_intent
 
 
 class ListCreateOrderAPIView(generics.ListCreateAPIView):
@@ -27,8 +28,7 @@ class ListCreateOrderAPIView(generics.ListCreateAPIView):
         
         if(serializer.is_valid()):            
             self.instance = serializer.save(created_by=self.request.user)
-            instance_price = 0
-            
+            instance_price = 0            
             # if(len(array_order_detail) < 1): 
             #     return response.Response(data={"Error": "Invalid data"}, status=status.HTTP_400_BAD_REQUEST)
             # for order_detail in array_order_detail:
@@ -64,39 +64,20 @@ class ListCreateOrderAPIView(generics.ListCreateAPIView):
             self.instance.save()
             # print(self.instance)
             # serializer = self.get_serializer(self.instance)
-            serializer = serializers.OrderSerializer(self.instance)
-            data_t = create_payment_intent(serializer.data['email'], serializer.data['total'], serializer.data['id'])
-            
+            serializer = serializers.OrderSerializer(self.instance)            
+            payment_method_id = self.request.data.get("payment_method_id")            
+            data_t = create_payment_intent(serializer.data['email'], serializer.data['total'], serializer.data['id'], payment_method_id)            
             # data_temp = refund_payment(str(42))
             # print(data_temp.data[1].id)
             # print(data_temp.data[0])
             data_return = {
-                "client_secret": data_t,
+                "payment_intent_id": data_t,
                 "order_data": serializer.data
             }
             
             # return response.Response(data=serializer.data, status=status.HTTP_201_CREATED)
-            return response.Response(data=data_return, status=status.HTTP_201_CREATED)
-        
-        else:
-            
+            return response.Response(data=data_return, status=status.HTTP_201_CREATED)        
+        else:            
             return response.Response(serializer.errors, status= status.HTTP_400_BAD_REQUEST)
 
 
-class CheckoutOrderAPIView(generics.CreateAPIView):
-    authentication_classes = [authentication.JWTAuthentication]
-    permission_classes = [permissions.IsAuthenticated]
-    
-    def get_queryset(self):        
-        self.queryset = models.Order.objects.filter(created_by=self.request.user.id)
-        # self.queryset = models.Order.objects.filter()
-        
-        return super().get_queryset()    
-    
-    def post(self, request, *args, **kwargs):
-        order_id = self.kwargs['order_id']
-        # print(request.data["payment_method_id"])
-        data = checkout(request.data["payment_method_id"], order_id)
-        
-        return response.Response(data=data, status=status.HTTP_201_CREATED)
-        

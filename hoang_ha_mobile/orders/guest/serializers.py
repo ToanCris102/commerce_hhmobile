@@ -72,6 +72,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'note',
             'total',
             'status',
+            'charge_status',
             'order_details',
         ]
 

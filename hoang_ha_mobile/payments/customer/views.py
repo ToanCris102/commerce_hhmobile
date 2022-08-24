@@ -1,13 +1,16 @@
 from rest_framework import status, response, permissions
-
 from rest_framework.decorators import api_view
 from rest_framework.views import APIView
+from rest_framework import generics
 
 from rest_framework_simplejwt import authentication
 
-from hoang_ha_mobile.base.services.payments.stripe.views import setup_payment_intent, list_payment_method, detach_payment_method
+from orders.models import Order
 
-import stripe
+from hoang_ha_mobile.base.services.payments.stripe.views \
+import  setup_payment_intent, list_payment_method, detach_payment_method, \
+webhook_stripe, checkout, refund_payment
+
 
     
 class create_payment_method(APIView):
@@ -46,8 +49,9 @@ class DeletePaymentMethod(APIView):
     
     def delete(self, *args, **kwargs):
         payment_method_id = self.kwargs['payment_method_id']
-        print(payment_method_id)
-        detach_payment_method(payment_method_id)
+        data = detach_payment_method(payment_method_id)
+        if(data['status'] == False):
+            return response.Response(data = data['data'], status = status.HTTP_400_BAD_REQUEST)
         
         return response.Response(status = status.HTTP_200_OK)
 
@@ -57,29 +61,42 @@ def webhook(request):
     event = None
     payload = request.body    
     sig_header = request.headers['STRIPE_SIGNATURE']
-    endpoint_secret = "whsec_8fe9a03afe2553b5c5e32a0dd8be1bfd1fd49955a0c9bc565cd194d6b1d9ccec"
-    try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, endpoint_secret
-        )
-    except ValueError as e:
-        # Invalid payload
-        raise e
-    except stripe.error.SignatureVerificationError as e:
-        # Invalid signature
-        raise e
-
-    if event.type == 'payment_intent.succeeded':
-        payment_intent = event.data.object # contains a stripe.PaymentIntent
-        print('PaymentIntent was successful!')
-    elif event.type == 'payment_method.attached':
-        payment_method = event.data.object # contains a stripe.PaymentMethod
-        print('PaymentMethod was attached to a Customer!')
-    # ... handle other event types
-    else:
-        print('Unhandled event type {}'.format(event.type))
-    # Handle the event
-    print('Handled event type {}'.format(event['type']))
+    webhook_stripe(payload, sig_header, event)
 
     return response.Response(data={"success": "True"})
     
+    
+class CheckoutOrderAPIView(generics.CreateAPIView):
+    authentication_classes = [authentication.JWTAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):        
+        self.queryset = Order.objects.filter(created_by=self.request.user.id)
+        
+        return super().get_queryset()    
+    
+    def post(self, request, *args, **kwargs):
+        order_id = self.kwargs['order_id']
+        data = checkout(request.data["payment_method_id"], order_id)       
+        if(data['status'] == False):            
+            return response.Response(data=data['data'], status=status.HTTP_400_BAD_REQUEST)
+        
+        return response.Response(data=data, status=status.HTTP_201_CREATED)
+        
+        
+class RefundOrderAPIView(generics.CreateAPIView):
+    authentication_classes = [authentication.JWTAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):        
+        self.queryset = Order.objects.filter(created_by=self.request.user.id, status='processing')
+        
+        return super().get_queryset()    
+    
+    def post(self, request, *args, **kwargs):
+        order_id = self.kwargs['order_id']
+        data = refund_payment(order_id)
+        if(data['status'] == False):
+            return response.Response(data=data['data'], status=status.HTTP_400_BAD_REQUEST)
+        
+        return response.Response(data=data, status=status.HTTP_201_CREATED)
