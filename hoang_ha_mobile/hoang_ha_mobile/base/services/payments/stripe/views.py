@@ -1,11 +1,11 @@
-import os
-from dotenv import load_dotenv
-load_dotenv()
-
-import stripe
-stripe.api_key = os.getenv('STRIPE_API_KEY')
-
 from orders.untils import update_status_charge
+from transactions.utils import create_transaction
+from dotenv import load_dotenv
+import stripe
+import os
+
+stripe.api_key = os.getenv('STRIPE_API_KEY')
+load_dotenv()
 
 
 def get_or_create_customer(email):
@@ -22,7 +22,7 @@ def get_or_create_customer(email):
         return customer.data[0]
 
 
-def create_payment_intent(email, amount, order_id, payment_method_id):
+def create_payment_intent(email, amount, order_id, payment_method_id, account_id):
     customer = get_or_create_customer(email)
     payment_intent = stripe.PaymentIntent.create(
         amount = amount, 
@@ -31,6 +31,7 @@ def create_payment_intent(email, amount, order_id, payment_method_id):
         payment_method_types=['card'],
         metadata = {
             'order_id': order_id,
+            'account_id': account_id,
         },   
     )    
     if (payment_method_id is not None):
@@ -127,6 +128,39 @@ def refund_payment(order_id):
         }
     
     
+def retrieve_balance_transaction(bt_id):
+    result = stripe.BalanceTransaction.retrieve(
+        bt_id,
+    )
+    
+    return result
+    
+
+def create_transaction_info(charge):    
+    type = charge['object']
+    description = charge['id'] 
+    blance_transaction_id = charge['balance_transaction']
+    if(charge['refunded'] == True):
+        type = 'refund'
+        description = "Refund for charge: " + charge['id']
+        blance_transaction_id = charge.refunds.data[0].balance_transaction
+        
+    ba_tr = retrieve_balance_transaction(blance_transaction_id)
+    data = {
+        "type": type,
+        "amount": charge['amount'],
+        "net": ba_tr['net'],
+        "fee": ba_tr['fee'],
+        "description": description,
+        "payment_id": charge['payment_method'],
+        "order": charge['metadata'].order_id,
+        "customer": charge['metadata'].account_id,
+        "available_on": charge['created'],
+    }
+    
+    return data
+
+    
 def webhook_stripe(payload, sig_header, event):
     endpoint_secret = os.getenv('ENDPOINT_SECRET')
     try:
@@ -159,9 +193,16 @@ def webhook_stripe(payload, sig_header, event):
     
     if event.type == 'charge.succeeded':
         charge = event.data.object
-        
-        print(charge)
         update_status_charge(charge.metadata.order_id)
+        data = create_transaction_info(charge)
+        create_transaction(data)
         print('Charging was successful!')
+        
+    if event.type == 'charge.refunded':
+        charge = event.data.object
+        # update_status_charge(charge.metadata.order_id)
+        data = create_transaction_info(charge)
+        create_transaction(data)
+        print('Refunding was successful!')
     
     print('Handled event type {}'.format(event['type']))

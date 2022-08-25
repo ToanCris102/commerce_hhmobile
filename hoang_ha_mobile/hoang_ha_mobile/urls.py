@@ -64,4 +64,7 @@ urlpatterns = [
     path('admin/payments/', include('payments.administrator.urls')),
     path('customer/payments/', include('payments.customer.urls')),
     path('payments/', include('payments.guest.urls')),
+    
+    path('admin/transactions/', include('transactions.administrator.urls')),
+    
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
