@@ -1,4 +1,4 @@
-from orders.untils import update_status_charge
+from orders.untils import update_status_charge, update_status_order
 from transactions.utils import create_transaction
 from dotenv import load_dotenv
 import stripe
@@ -136,14 +136,16 @@ def retrieve_balance_transaction(bt_id):
     return result
     
 
-def create_transaction_info(charge):    
+def setup_transaction_info(charge):    
     type = charge['object']
     description = charge['id'] 
     blance_transaction_id = charge['balance_transaction']
+    timetamp = charge['created']
     if(charge['refunded'] == True):
         type = 'refund'
         description = "Refund for charge: " + charge['id']
         blance_transaction_id = charge.refunds.data[0].balance_transaction
+        timetamp = charge.refunds.data[0].created
         
     ba_tr = retrieve_balance_transaction(blance_transaction_id)
     data = {
@@ -155,7 +157,7 @@ def create_transaction_info(charge):
         "payment_id": charge['payment_method'],
         "order": charge['metadata'].order_id,
         "customer": charge['metadata'].account_id,
-        "available_on": charge['created'],
+        "available_on": timetamp,
     }
     
     return data
@@ -194,14 +196,16 @@ def webhook_stripe(payload, sig_header, event):
     if event.type == 'charge.succeeded':
         charge = event.data.object
         update_status_charge(charge.metadata.order_id)
-        data = create_transaction_info(charge)
+        data = setup_transaction_info(charge)
         create_transaction(data)
         print('Charging was successful!')
         
     if event.type == 'charge.refunded':
         charge = event.data.object
-        # update_status_charge(charge.metadata.order_id)
-        data = create_transaction_info(charge)
+        # print(charge)
+        status = "canceled"
+        update_status_order(charge.metadata.order_id, status)
+        data = setup_transaction_info(charge)
         create_transaction(data)
         print('Refunding was successful!')
     

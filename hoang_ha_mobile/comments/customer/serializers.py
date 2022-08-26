@@ -35,6 +35,14 @@ class CommentSerializer(serializers.ModelSerializer):
             "content",
             "variant",
         ]
+        
+    # def to_representation(self, instance):
+    #     limit_content = instance.content
+    #     if len(limit_content) > 100:
+    #         limit_content = limit_content[:100]
+    #         instance.content = limit_content
+    #         instance.content += "..."
+    #     return super().to_representation(instance)
     # def get_replies(self, obj):
     #         replies = obj.get_children_comment()
     #         serializer = CommentSerializer(replies, many=True, read_only=True)  
@@ -56,8 +64,8 @@ class CommentRatingSerializer(serializers.ModelSerializer):
             "variant",
             "rating",
         ]
-        
-        
+    
+    
 class CommentRatingUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Comment
@@ -66,4 +74,3 @@ class CommentRatingUpdateSerializer(serializers.ModelSerializer):
             "content",
             "rating"
         ]
-        
