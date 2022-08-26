@@ -18,8 +18,8 @@ from firebase_admin import initialize_app, credentials
 load_dotenv()
 
 # setting certification for firebase cloud
-cred = credentials.Certificate(os.getenv('PATH_CERTIFICATION'))
-FIREBASE_APP = initialize_app(cred)
+# cred = credentials.Certificate(os.getenv('PATH_CERTIFICATION'))
+# FIREBASE_APP = initialize_app(cred)
 # setting certification for firebase cloud
 
 

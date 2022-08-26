@@ -12,17 +12,23 @@ class SendMessageToClient(APIView):
     def post(self, *args, **kwargs):
         device_id = kwargs['device_id']
         mess_data = self.request.data['mess_data']
-        send_message_to(device_id, mess_data)
+        send_message_to(device_id, None, mess_data)
         
         return response.Response(status=status.HTTP_200_OK)
     
+    # def get(self, request, *args, **kwargs):
+    #     data = list_device()
+    #     serializer = FCMDeviceSerializer(data, many=True)
+
+    #     return response.Response(data=serializer.data, status=status.HTTP_200_OK)
     
-class ListDeviceAPI(APIView):
-    # authentication_classes = [authentication.JWTAuthentication]
-    # permission_classes = [permissions.IsAuthenticated]
-        
+    
+class ListDeviceAPI(APIView):        
+    authentication_classes = [authentication.JWTAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+    
     def get(self, request, *args, **kwargs):
-        data = list_device()
+        data = list_device(request.user.id)
         serializer = FCMDeviceSerializer(data, many=True)
 
         return response.Response(data=serializer.data, status=status.HTTP_200_OK)

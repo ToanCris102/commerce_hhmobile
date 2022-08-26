@@ -1,3 +1,5 @@
+from turtle import title
+from notifications.utils import push_notification_order
 from orders.untils import update_status_charge, update_status_order
 from transactions.utils import create_transaction
 from dotenv import load_dotenv
@@ -199,6 +201,9 @@ def webhook_stripe(payload, sig_header, event):
         data = setup_transaction_info(charge)
         create_transaction(data)
         print('Charging was successful!')
+        title="Charging was secessful for order_id: " + str(charge.metadata.order_id)
+        body="Amount: " + str(charge.amount)
+        push_notification_order(charge.metadata.account_id, title, body)
         
     if event.type == 'charge.refunded':
         charge = event.data.object
@@ -208,5 +213,8 @@ def webhook_stripe(payload, sig_header, event):
         data = setup_transaction_info(charge)
         create_transaction(data)
         print('Refunding was successful!')
-    
+        title="Refunding was secessful for order_id: " + str(charge.metadata.order_id)
+        body="Refund Amount: " + str(charge.amount)
+        push_notification_order(charge.metadata.account_id, title, body)
+        
     print('Handled event type {}'.format(event['type']))
