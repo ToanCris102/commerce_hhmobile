@@ -1,5 +1,5 @@
 from fcm_django.api.rest_framework import FCMDeviceAuthorizedViewSet
-from django.urls import path, include
+from django.urls import path
 from . import views
 
 urlpatterns = [

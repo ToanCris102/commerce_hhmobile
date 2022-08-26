@@ -1,13 +1,14 @@
-from turtle import title
 from notifications.utils import push_notification_order
-from orders.untils import update_status_charge, update_status_order
 from transactions.utils import create_transaction
+from orders.untils import update_status_charge, update_status_order
+
 from dotenv import load_dotenv
 import stripe
 import os
 
 stripe.api_key = os.getenv('STRIPE_API_KEY')
 load_dotenv()
+
 
 
 def get_or_create_customer(email):

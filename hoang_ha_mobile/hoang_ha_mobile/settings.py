@@ -18,8 +18,8 @@ from firebase_admin import initialize_app, credentials
 load_dotenv()
 
 # setting certification for firebase cloud
-# cred = credentials.Certificate(os.getenv('PATH_CERTIFICATION'))
-# FIREBASE_APP = initialize_app(cred)
+cred = credentials.Certificate(os.getenv('PATH_CERTIFICATION'))
+FIREBASE_APP = initialize_app(cred)
 # setting certification for firebase cloud
 
 
@@ -222,7 +222,10 @@ EMAIL_HOST_PASSWORD = os.getenv('PASSWORD_APP')
 
 
 
+
+# setting firebase
 FCM_DJANGO_SETTINGS = {
+    "DEFAULT_FIREBASE_APP": FIREBASE_APP,
      # default: _('FCM Django')
     "APP_VERBOSE_NAME": "[string for AppConfig's verbose_name]",
      # true if you want to have only one active device per registered user at a time
@@ -231,9 +234,10 @@ FCM_DJANGO_SETTINGS = {
      # devices to which notifications cannot be sent,
      # are deleted upon receiving error response from FCM
      # default: False
-    "DELETE_INACTIVE_DEVICES": False,
+    "DELETE_INACTIVE_DEVICES": True,
     # Transform create of an existing Device (based on registration id) into
                 # an update. See the section
     # "Update of device with duplicate registration ID" for more details.
-    "UPDATE_ON_DUPLICATE_REG_ID": False,
+    "UPDATE_ON_DUPLICATE_REG_ID": True,
 }
+# setting firebase
