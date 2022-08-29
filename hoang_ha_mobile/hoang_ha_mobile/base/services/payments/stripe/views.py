@@ -26,22 +26,33 @@ def get_or_create_customer(email):
 
 
 def create_payment_intent(email, amount, order_id, payment_method_id, account_id):
-    customer = get_or_create_customer(email)
-    payment_intent = stripe.PaymentIntent.create(
-        amount = amount, 
-        currency = 'usd', 
-        customer = customer['id'],
-        payment_method_types=['card'],
-        metadata = {
-            'order_id': order_id,
-            'account_id': account_id,
-        },   
-    )    
+    if(account_id is not None):
+        customer = get_or_create_customer(email)
+        payment_intent = stripe.PaymentIntent.create(
+            amount = amount*100, 
+            currency = 'usd', 
+            customer = customer['id'],
+            payment_method_types=['card'],        
+            metadata = {
+                'order_id': order_id,
+                'account_id': account_id,
+            },   
+        )    
+    else: 
+        payment_intent = stripe.PaymentIntent.create(
+            amount = amount*100, 
+            currency = 'usd', 
+            payment_method_types=['card'],        
+            metadata = {
+                'order_id': order_id,
+            },   
+        )    
     if (payment_method_id is not None):
         payment = stripe.PaymentIntent.confirm(        
             payment_intent.id,
             payment_method=payment_method_id,
         )
+        return payment.status    
     
     return payment_intent.id
 
@@ -57,14 +68,30 @@ def setup_payment_intent(email):
     return intent.client_secret
     
     
+def response_payment_method(list):
+    data_return = []
+    for item in list:
+        data_return.append({
+            "paymen_method_id": item.id,
+            "card": {
+                "brand": item.card.brand,
+                "last4": item.card.last4,
+                "exp_month": item.card.exp_month,
+                "exp_year": item.card.exp_year,                
+            }
+        })
+        
+    return data_return
+    
+    
 def list_payment_method(email):
     customer = get_or_create_customer(email)
     list = stripe.PaymentMethod.list(
         customer= customer.id,
         type="card",
-    )
-
-    return list
+    )    
+    
+    return response_payment_method(list.data)
 
 
 def detach_payment_method(payment_method_id):
@@ -151,20 +178,34 @@ def setup_transaction_info(charge):
         timetamp = charge.refunds.data[0].created
         
     ba_tr = retrieve_balance_transaction(blance_transaction_id)
-    data = {
-        "type": type,
-        "amount": charge['amount'],
-        "currency": charge['currency'],
-        "unit": "cent",
-        "net": ba_tr['net'],
-        "fee": ba_tr['fee'],
-        "description": description,
-        "payment_id": charge['payment_method'],
-        "order": charge['metadata'].order_id,
-        "customer": charge['metadata'].account_id,
-        "available_on": timetamp,
-    }
-    
+    try:
+        data = {
+            "type": type,
+            "amount": charge['amount'],
+            "currency": charge['currency'],
+            "unit": "cent",
+            "net": ba_tr['net'],
+            "fee": ba_tr['fee'],
+            "description": description,
+            "payment_id": charge['payment_method'],
+            "order": charge['metadata'].order_id,
+            "customer": charge['metadata'].account_id,
+            "available_on": timetamp,
+        }
+    except: 
+        data = {
+            "type": type,
+            "amount": charge['amount'],
+            "currency": charge['currency'],
+            "unit": "cent",
+            "net": ba_tr['net'],
+            "fee": ba_tr['fee'],
+            "description": description,
+            "payment_id": charge['payment_method'],
+            "order": charge['metadata'].order_id,
+            "available_on": timetamp,
+        }
+        
     return data
 
     
@@ -205,8 +246,13 @@ def webhook_stripe(payload, sig_header, event):
         create_transaction(data)
         print('Charging was successful!')
         title="Charging was secessful for order_id: " + str(charge.metadata.order_id)
-        body="Amount: " + str(charge.amount)
-        push_notification_order(charge.metadata.account_id, title, body)
+        body="Amount: " + str(charge.amount / 100) + " " + charge.currency
+        try:
+            account_id = charge.metadata.account_id
+            push_notification_order(account_id, title, body)
+        except:
+            pass
+        
         
     if event.type == 'charge.refunded':
         charge = event.data.object
@@ -217,7 +263,11 @@ def webhook_stripe(payload, sig_header, event):
         create_transaction(data)
         print('Refunding was successful!')
         title="Refunding was secessful for order_id: " + str(charge.metadata.order_id)
-        body="Refund Amount: " + str(charge.amount)
-        push_notification_order(charge.metadata.account_id, title, body)
+        body="Refund Amount: " + str(charge.amount / 100) + " " + charge.currency
+        try:
+            account_id = charge.metadata.account_id
+            push_notification_order(account_id, title, body)
+        except:
+            pass
         
     print('Handled event type {}'.format(event['type']))

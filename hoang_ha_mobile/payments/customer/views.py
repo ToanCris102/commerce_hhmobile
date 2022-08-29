@@ -34,9 +34,9 @@ class create_payment_method(APIView):
         email = self.request.user.email
         if(email is not None):
             list_pm = list_payment_method(email)
-            data =  {
-                        "methods": list_pm
-                    }
+            data = {
+                "methods": list_pm
+            }
             
             return response.Response(data=data, status = status.HTTP_201_CREATED)
         

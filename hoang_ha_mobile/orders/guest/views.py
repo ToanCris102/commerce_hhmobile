@@ -6,8 +6,12 @@ from rest_framework import generics
 
 from variants.models import Variant
 from hoang_ha_mobile.base.errors import check_valid_item
+from hoang_ha_mobile.base.services.payments.stripe.views \
+import create_payment_intent
+
 from .serializers import OrderSerializer, OrderDetailSerializer, ListOrderSerializer
 from ..models import Order
+
 
 
 class CreateOrderApiView(generics.ListCreateAPIView):
@@ -57,6 +61,13 @@ class CreateOrderApiView(generics.ListCreateAPIView):
             self.instance.total = total
             self.instance.save()
             serializer = self.get_serializer(self.instance)
+            payment_method_id = self.request.data.get("payment_method_id")  
+            data_t = create_payment_intent(serializer.data['email'], serializer.data['total'], serializer.data['id'], payment_method_id, account_id=None)
+            data_return = {
+                "charge_status": data_t,
+                "order_data": serializer.data
+            }
+            
             return Response(data=serializer.data, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors)
