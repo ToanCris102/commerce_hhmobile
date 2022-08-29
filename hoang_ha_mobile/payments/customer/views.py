@@ -53,7 +53,7 @@ class DeletePaymentMethod(APIView):
         if(data['status'] == False):
             return response.Response(data = data['data'], status = status.HTTP_400_BAD_REQUEST)
         
-        return response.Response(status = status.HTTP_200_OK)
+        return response.Response(status = status.HTTP_204_NO_CONTENT)
 
 
 @api_view(['POST'])

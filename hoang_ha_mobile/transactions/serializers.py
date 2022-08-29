@@ -9,6 +9,8 @@ class TransactionSerializer(serializers.ModelSerializer):
             'type',
             'net',
             'amount',
+            'currency',
+            'unit',
             'fee',
             'description',
             'payment_id',

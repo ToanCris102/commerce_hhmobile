@@ -154,7 +154,7 @@ def setup_transaction_info(charge):
     data = {
         "type": type,
         "amount": charge['amount'],
-        "currency": charge['currcency'],
+        "currency": charge['currency'],
         "unit": "cent",
         "net": ba_tr['net'],
         "fee": ba_tr['fee'],

@@ -5,11 +5,12 @@ from ..models import Transaction
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
-        depth=1
         fields = [ 
             'type',
             'net',
             'amount',
+            'currency',
+            'unit',
             'fee',
             'description',
             'payment_id',

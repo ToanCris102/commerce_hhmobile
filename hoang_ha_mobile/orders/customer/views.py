@@ -1,4 +1,5 @@
 from rest_framework import generics, permissions, response, status
+from rest_framework import filters
 from rest_framework_simplejwt import authentication
 
 from variants.models import Variant
@@ -14,6 +15,9 @@ class ListCreateOrderAPIView(generics.ListCreateAPIView):
     authentication_classes = [authentication.JWTAuthentication]
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = serializers.OrderReadSerializer
+    filter_backends = [filters.OrderingFilter]
+    # ordering_fields = ['-created_at']
+    ordering = ['-created_at']
     
     def get_queryset(self):        
         self.queryset = models.Order.objects.filter(created_by=self.request.user.id)

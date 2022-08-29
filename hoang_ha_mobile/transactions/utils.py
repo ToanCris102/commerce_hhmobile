@@ -1,7 +1,8 @@
 from .serializers import TransactionSerializer
 
 
-def create_transaction( data):
+def create_transaction(data):
+    print(data)
     try:
         instance = TransactionSerializer(data=data)
         instance.is_valid(raise_exception=True)    

@@ -1,3 +1,4 @@
+from locale import currency
 from django.db import models
 from orders.models import Order
 from django.contrib.auth import get_user_model
@@ -13,6 +14,8 @@ class Transaction(models.Model):
     type = models.CharField(choices=TYPE_CHOICES, max_length=50)
     net = models.CharField(max_length=50)
     amount = models.CharField(max_length=50)
+    currency = models.CharField(max_length=50)
+    unit = models.CharField(max_length=50)
     fee = models.CharField(max_length=50)
     description = models.CharField(max_length=255, null=True)
     payment_id = models.CharField(max_length=50)
