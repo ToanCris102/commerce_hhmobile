@@ -4,11 +4,12 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import generics
 
-from variants.models import Variant
-from hoang_ha_mobile.base.errors import check_valid_item
+from hoang_ha_mobile.base.errors.errors import check_valid_item
+from hoang_ha_mobile.base.errors.bases import return_code_400
 from hoang_ha_mobile.base.services.payments.stripe.views \
 import create_payment_intent
 
+from variants.models import Variant
 from .serializers import OrderSerializer, OrderDetailSerializer, ListOrderSerializer
 from ..models import Order
 
@@ -63,12 +64,16 @@ class CreateOrderApiView(generics.ListCreateAPIView):
             serializer = self.get_serializer(self.instance)
             payment_method_id = self.request.data.get("payment_method_id")  
             data_t = create_payment_intent(serializer.data['email'], serializer.data['total'], serializer.data['id'], payment_method_id, account_id=None)
+            if(data_t['status'] == False):
+                message = data_t['data']
+                return return_code_400(message)
+                
             data_return = {
-                "charge_status": data_t,
-                "order_data": serializer.data
+                "message": "Order successfully",
+                "data": serializer.data
             }
             
-            return Response(data=serializer.data, status=status.HTTP_201_CREATED)
+            return Response(data=data_return, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors)
 

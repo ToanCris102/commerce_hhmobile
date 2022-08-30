@@ -10,7 +10,7 @@ from orders.models import Order
 from hoang_ha_mobile.base.services.payments.stripe.views \
 import  setup_payment_intent, list_payment_method, detach_payment_method, \
 webhook_stripe, checkout, refund_payment
-
+from hoang_ha_mobile.base.errors.bases import return_code_400
 
     
 class create_payment_method(APIView):
@@ -71,32 +71,41 @@ class CheckoutOrderAPIView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):        
-        self.queryset = Order.objects.filter(created_by=self.request.user.id)
-        
+        self.queryset = Order.objects.filter(created_by=self.request.user.id)      
+          
         return super().get_queryset()    
     
     def post(self, request, *args, **kwargs):
         order_id = self.kwargs['order_id']
         data = checkout(request.data["payment_method_id"], order_id)       
-        if(data['status'] == False):            
-            return response.Response(data=data['data'], status=status.HTTP_400_BAD_REQUEST)
+        if(data['status'] == False):   
+            message = data['data']
+            
+            return return_code_400(message)         
         
-        return response.Response(data=data, status=status.HTTP_201_CREATED)
+        return response.Response(status=status.HTTP_200_OK)
         
         
 class RefundOrderAPIView(generics.CreateAPIView):
     authentication_classes = [authentication.JWTAuthentication]
     permission_classes = [permissions.IsAuthenticated]
     
-    def get_queryset(self):        
-        self.queryset = Order.objects.filter(created_by=self.request.user.id, status='processing')
-        
+    def get_queryset(self): 
+        self.queryset = Order.objects.filter(created_by=self.request.user.id, status='processing')      
         return super().get_queryset()    
     
     def post(self, request, *args, **kwargs):
         order_id = self.kwargs['order_id']
+        order = Order.objects.filter(id=self.kwargs['order_id'])
+        if not(order.exists()):
+            message = "Order don't exist"
+            
+            return return_code_400(message)
+        
         data = refund_payment(order_id)
         if(data['status'] == False):
-            return response.Response(data=data['data'], status=status.HTTP_400_BAD_REQUEST)
+            message = data['data']
+            
+            return return_code_400(message)
         
-        return response.Response(data=data, status=status.HTTP_201_CREATED)
+        return response.Response(status=status.HTTP_200_OK)

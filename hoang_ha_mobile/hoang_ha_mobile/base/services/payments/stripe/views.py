@@ -1,9 +1,11 @@
+from hoang_ha_mobile.base.errors.bases import exception_stripe_message
+
 from notifications.utils import push_notification_order
 from transactions.utils import create_transaction
 from orders.untils import update_status_charge, update_status_order
 
 from dotenv import load_dotenv
-import stripe
+import stripe, logging
 import os
 
 stripe.api_key = os.getenv('STRIPE_API_KEY')
@@ -46,15 +48,44 @@ def create_payment_intent(email, amount, order_id, payment_method_id, account_id
             metadata = {
                 'order_id': order_id,
             },   
-        )    
-    if (payment_method_id is not None):
-        payment = stripe.PaymentIntent.confirm(        
-            payment_intent.id,
-            payment_method=payment_method_id,
-        )
-        return payment.status    
-    
-    return payment_intent.id
+        )  
+          
+    if (payment_method_id is not None):   
+        try:
+            payment = stripe.PaymentIntent.confirm(        
+                payment_intent.id,
+                payment_method=payment_method_id,
+            ) 
+            
+            return {
+                "data": payment,
+                "status": True
+            }
+        except stripe.error.CardError as e:
+            # data = exception_stripe_message(e)            
+            logging.error("A payment error occurred: {}".format(e.user_message))
+            data = "A payment error occurred: {}".format(e.user_message)
+        except stripe.error.InvalidRequestError as e:
+            
+            # logging.error("An invalid request occurred.")
+            logging.error(e)
+            data = "Payment medthod invalid data"
+        except Exception:
+            logging.error("Another problem occurred, maybe unrelated to Stripe.")
+            data = "Another problem occurred, maybe unrelated to Stripe."
+        else:
+            logging.info("No error.")           
+            
+        return {
+                # "data": "Payment Method invalid Data",
+                "data": data,
+                "status": False
+            }
+        
+    return {
+        "data": payment_intent.client_secret,
+        "status": True
+    }
 
 
 def setup_payment_intent(email):
@@ -117,7 +148,7 @@ def checkout(payment_method_id, order_id):
     )       
     if(len(payment_intent.data) < 1): 
         return {
-            "data": "Don't ready for charge, Try to after 10 second",
+            "data": "Don't ready for charge, Can't charge when Order was charged",
             "status": False
         }       
         
@@ -132,6 +163,7 @@ def checkout(payment_method_id, order_id):
             "status": True
         } 
     except Exception as e:
+        
         return {
             "data": str(e),
             "status": False
@@ -142,6 +174,13 @@ def refund_payment(order_id):
     charge = stripe.Charge.search(
         query = "metadata['order_id']:'%d'" % (order_id)
     )    
+    # print(charge.data[0].refunded)
+    if(charge.data[0].refunded == True):
+        return {
+            "data": "Order was Refunded",
+            "status": False
+        } 
+        
     if(len(charge.data) < 1):        
         return {
             "data": "Wrong data",

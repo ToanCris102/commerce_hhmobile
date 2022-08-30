@@ -1,7 +1,7 @@
 from rest_framework import generics, permissions, response, status
 from rest_framework_simplejwt import authentication
 
-from hoang_ha_mobile.base.errors import check_valid_item
+from hoang_ha_mobile.base.errors.errors import check_valid_item
 from .permissions import IsOwner
 from . import serializers
 from .. import models
