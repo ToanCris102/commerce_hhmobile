@@ -1,8 +1,9 @@
 from hoang_ha_mobile.base.errors.bases import exception_stripe_message
 
+from accounts.utils import update_customer_id, get_user
 from notifications.utils import push_notification_order
 from transactions.utils import create_transaction
-from orders.untils import update_status_charge, update_status_order
+from orders.untils import update_status_charge, update_status_order, get_order_object
 
 from dotenv import load_dotenv
 import stripe, logging
@@ -14,17 +15,17 @@ load_dotenv()
 
 
 def get_or_create_customer(email):
-    customer = stripe.Customer.search(
-        query ="email:'%s'" % (email)
-    ) 
-    if(len(customer.data) < 1):
+    user = get_user(email)
+    if(user.exists() and user[0].customer_id != ''):
+        return user[0].customer_id
+    
+    else:
         customer = stripe.Customer.create(
             email = email
-        )
+        )  
+        update_customer_id(email, customer['id'])
         
-        return customer        
-    else:        
-        return customer.data[0]
+        return customer['id']
 
 
 def create_payment_intent(email, amount, order_id, payment_method_id, account_id):
@@ -33,7 +34,7 @@ def create_payment_intent(email, amount, order_id, payment_method_id, account_id
         payment_intent = stripe.PaymentIntent.create(
             amount = amount*100, 
             currency = 'usd', 
-            customer = customer['id'],
+            customer = customer,
             payment_method_types=['card'],        
             metadata = {
                 'order_id': order_id,
@@ -59,7 +60,7 @@ def create_payment_intent(email, amount, order_id, payment_method_id, account_id
             
             return {
                 "data": payment,
-                "status": True
+                "status": "charge"
             }
         except stripe.error.CardError as e:
             # data = exception_stripe_message(e)            
@@ -90,9 +91,9 @@ def create_payment_intent(email, amount, order_id, payment_method_id, account_id
 
 def setup_payment_intent(email):
     customer = get_or_create_customer(email)
-    print(customer.id)
+    # print(customer.id)
     intent = stripe.SetupIntent.create(
-        customer = customer.id,
+        customer = customer,
         payment_method_types = ["card"],
     )
          
@@ -118,7 +119,7 @@ def response_payment_method(list):
 def list_payment_method(email):
     customer = get_or_create_customer(email)
     list = stripe.PaymentMethod.list(
-        customer= customer.id,
+        customer= customer,
         type="card",
     )    
     
@@ -171,30 +172,30 @@ def checkout(payment_method_id, order_id):
             
 
 def refund_payment(order_id):
-    charge = stripe.Charge.search(
-        query = "metadata['order_id']:'%d'" % (order_id)
-    )    
-    # print(charge.data[0].refunded)
-    if(charge.data[0].refunded == True):
+    order = get_order_object(order_id)
+    if(order.exists() and order[0].charge_id is not None):
+        print(order[0].charge_id)
+        charge = stripe.Charge.retrieve(order[0].charge_id)
+        if(charge.refunded == True):
+            return {
+                "data": "Order was Refunded",
+                "status": False
+            } 
+        else:
+            data_rf = stripe.Refund.create(
+                charge = charge.id,
+            )
+            
+            return {
+                "data": data_rf,
+                "status": True
+            }
+            
+    else:
         return {
-            "data": "Order was Refunded",
+            "data": "Invalid Data",
             "status": False
         } 
-        
-    if(len(charge.data) < 1):        
-        return {
-            "data": "Wrong data",
-            "status": False
-        }
-    
-    data_rf = stripe.Refund.create(
-        charge = charge.data[0].id,
-    )
-    
-    return {
-            "data": data_rf,
-            "status": True
-        }
     
     
 def retrieve_balance_transaction(bt_id):

@@ -15,3 +15,11 @@ class OrderStatusUpdate(serializers.ModelSerializer):
         fields = [
             'status'
         ]
+        
+        
+class OrderChargeId(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = [
+            'charge_id'
+        ]

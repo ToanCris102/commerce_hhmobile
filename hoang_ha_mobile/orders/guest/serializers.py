@@ -71,6 +71,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'delivery_address',
             'note',
             'total',
+            'charge_id',
             'status',
             'charge_status',
             'order_details',

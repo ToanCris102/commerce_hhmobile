@@ -1,3 +1,4 @@
+from dataclasses import field
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -11,6 +12,15 @@ from rest_framework.exceptions import ValidationError
 from django.contrib.auth.password_validation import validate_password
 from . import models
 User = get_user_model()
+
+
+class UpdateCustomerId(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            "customer_id"
+        ]
+        
 
 class UserAdminSerializer(serializers.ModelSerializer):
     class Meta:
@@ -27,8 +37,6 @@ class UserAdminSerializer(serializers.ModelSerializer):
             "updated_by",
             "block_by"
         ]
-
-
 
         
 class ChangePasswordSerializer(serializers.ModelSerializer):
@@ -47,6 +55,7 @@ class AddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Address
         fields = ["street", "ward", "district", "province"]
+
 
 class ProfileSerializer(serializers.ModelSerializer):
     addresses = AddressSerializer(many=True)

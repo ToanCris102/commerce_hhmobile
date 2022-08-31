@@ -60,18 +60,27 @@ class CreateOrderApiView(generics.ListCreateAPIView):
                 if(serializer.is_valid()):
                     serializer.save()
             self.instance.total = total
-            self.instance.save()
-            serializer = self.get_serializer(self.instance)
+            self.instance.save()  
+            # serializer = self.get_serializer(self.instance)          
             payment_method_id = self.request.data.get("payment_method_id")  
-            data_t = create_payment_intent(serializer.data['email'], serializer.data['total'], serializer.data['id'], payment_method_id, account_id=None)
+            # data_t = create_payment_intent(serializer.data['email'], serializer.data['total'], serializer.data['id'], payment_method_id, account_id=None)
+            data_t = create_payment_intent(self.instance.email, self.instance.total, self.instance.id, payment_method_id, account_id=None)
+            if(data_t['status'] == "charge"):
+                self.instance.charge_id = data_t['data'].charges.data[0].id
+                self.instance.save()
+            
+            serializer = self.get_serializer(self.instance)
             if(data_t['status'] == False):
                 message = data_t['data']
-                return return_code_400(message)
-                
-            data_return = {
-                "message": "Order successfully",
-                "data": serializer.data
-            }
+                data_return = {
+                    "message": message,
+                    "data": serializer.data
+                }
+            else:                
+                data_return = {
+                    "message": "Order successfully",
+                    "data": serializer.data
+                }
             
             return Response(data=data_return, status=status.HTTP_201_CREATED)
         else:

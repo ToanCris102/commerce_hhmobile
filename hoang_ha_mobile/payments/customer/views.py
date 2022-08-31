@@ -1,16 +1,16 @@
-from rest_framework import status, response, permissions
+from rest_framework import status, response, permissions, generics
 from rest_framework.decorators import api_view
 from rest_framework.views import APIView
-from rest_framework import generics
-
 from rest_framework_simplejwt import authentication
-
-from orders.models import Order
 
 from hoang_ha_mobile.base.services.payments.stripe.views \
 import  setup_payment_intent, list_payment_method, detach_payment_method, \
 webhook_stripe, checkout, refund_payment
 from hoang_ha_mobile.base.errors.bases import return_code_400
+
+from orders.untils import update_charge_id
+from orders.models import Order
+
 
     
 class create_payment_method(APIView):
@@ -19,7 +19,6 @@ class create_payment_method(APIView):
     
     def post(self, *args, **kwargs):
         email = self.request.user.email
-        # if(self.request.user.email is not None):
         if(email is not None):
             payment_intent = setup_payment_intent(email)
             data =  {
@@ -56,49 +55,40 @@ class DeletePaymentMethod(APIView):
         return response.Response(status = status.HTTP_204_NO_CONTENT)
 
 
-@api_view(['POST'])
-def webhook(request):
-    event = None
-    payload = request.body    
-    sig_header = request.headers['STRIPE_SIGNATURE']
-    webhook_stripe(payload, sig_header, event)
-
-    return response.Response(data={"success": "True"})
-    
-    
-class CheckoutOrderAPIView(generics.CreateAPIView):
-    authentication_classes = [authentication.JWTAuthentication]
-    permission_classes = [permissions.IsAuthenticated]
-    
-    def get_queryset(self):        
-        self.queryset = Order.objects.filter(created_by=self.request.user.id)      
-          
-        return super().get_queryset()    
-    
-    def post(self, request, *args, **kwargs):
+class CheckoutOrderAPIView(generics.CreateAPIView):    
+    def post(self, request, *args, **kwargs):        
         order_id = self.kwargs['order_id']
         data = checkout(request.data["payment_method_id"], order_id)       
         if(data['status'] == False):   
             message = data['data']
             
-            return return_code_400(message)         
+            return return_code_400(message)
+               
+        print(data['data'].charges.data[0].id)
+        data_return = update_charge_id(order_id, data['data'].charges.data[0].id)        
         
-        return response.Response(status=status.HTTP_200_OK)
+        return response.Response(data = data_return, status = status.HTTP_200_OK)
         
         
 class RefundOrderAPIView(generics.CreateAPIView):
     authentication_classes = [authentication.JWTAuthentication]
-    permission_classes = [permissions.IsAuthenticated]
-    
-    def get_queryset(self): 
-        self.queryset = Order.objects.filter(created_by=self.request.user.id, status='processing')      
-        return super().get_queryset()    
+    permission_classes = [permissions.IsAuthenticated]    
+    # def get_queryset(self): 
+    #     self.queryset = Order.objects.filter(created_by=self.request.user.id, status='processing')      
+    #     return super().get_queryset()    
     
     def post(self, request, *args, **kwargs):
+        # order = Order.objects.filter(created_by=self.request.user.id, status='processing') 
         order_id = self.kwargs['order_id']
-        order = Order.objects.filter(id=self.kwargs['order_id'])
+        order = Order.objects.filter(id=self.kwargs['order_id'], created_by=self.request.user.id)
         if not(order.exists()):
-            message = "Order don't exist"
+            message = "Order don't exist Or Other people's orders"
+            
+            return return_code_400(message)
+        
+        order = Order.objects.filter(id=self.kwargs['order_id'], status='canceled')
+        if(order.exists()):
+            message = "Order was refunded"
             
             return return_code_400(message)
         

@@ -22,6 +22,7 @@ class Order(models.Model):
     status = models.CharField(default="processing",choices= STATUS_CHOICES,max_length=255)
     charge_status = models.BooleanField(default=False, blank=True)
     total = models.BigIntegerField(default=0)
+    charge_id = models.CharField(max_length=50, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, related_name ="order_created" ,blank=True,null=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -44,6 +44,7 @@ class CustomUser(AbstractUser):
     email = models.EmailField(_('email address'), unique=True)
     birthday = models.DateField(blank=True,null=True)
     sex = models.CharField(max_length=4)
+    customer_id = models.CharField(max_length=20, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
     block_at = models.DateTimeField(blank=True, null=True)
     updated_by = models.CharField(max_length=255, blank=True)

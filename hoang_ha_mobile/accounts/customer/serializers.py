@@ -65,6 +65,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             "full_name",
             "phone",
             "email",
+            "customer_id",
             "birthday",
             "sex",
             'addresses',
