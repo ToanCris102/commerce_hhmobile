@@ -82,11 +82,13 @@ class ListCreateOrderAPIView(generics.ListCreateAPIView):
                 message = data_t['data']
                 data_return = {
                     "message": message,
+                    "charge": False,
                     "data": serializer.data
                 }
             else:                
                 data_return = {
                     "message": "Order successfully",
+                    "charge": True,
                     "data": serializer.data
                 }
             

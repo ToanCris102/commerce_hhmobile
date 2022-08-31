@@ -19,13 +19,14 @@ class CreateOrderApiView(generics.ListCreateAPIView):
     serializer_class = OrderSerializer
 
     def get_queryset(self):
-        self.queryset = Order.objects.filter(
-            email=self.request.query_params.get('email').lower()).prefetch_related()
+        self.queryset = Order.objects.filter(email=self.request.query_params.get('email').lower()).prefetch_related()
+        
         return super().get_queryset()
 
     def get_serializer(self, *args, **kwargs):
         if(self.request.method == "POST"):
             return super().get_serializer(*args, **kwargs)
+        
         return ListOrderSerializer(*args, **kwargs)
 
     def post(self, request, *args, **kwargs):
@@ -74,15 +75,18 @@ class CreateOrderApiView(generics.ListCreateAPIView):
                 message = data_t['data']
                 data_return = {
                     "message": message,
+                    "charge": False,
                     "data": serializer.data
                 }
             else:                
                 data_return = {
                     "message": "Order successfully",
+                    "charge": True,
                     "data": serializer.data
                 }
             
             return Response(data=data_return, status=status.HTTP_201_CREATED)
+        
         else:
             return Response(serializer.errors)
 
@@ -99,11 +103,15 @@ class OrderDetailApiView(generics.RetrieveUpdateAPIView):
                 data, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             self.perform_update(serializer)
+            
             return Response(data=serializer.data)
+        
         else:
-            return Response(data={"message": "Not Update!"}, status=status.HTTP_400_BAD_REQUEST)
+            message = "Not Update!"
+            
+            return return_code_400(message)
 
-    def retrieve(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
+    # def retrieve(self, request, *args, **kwargs):
+    #     return super().retrieve(request, *args, **kwargs)
 
 
